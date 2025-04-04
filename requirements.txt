@@ -1,0 +1,13 @@
+
+pandas==2.2.3
+yt-dlp>=2025.01.12
+python-telegram-bot==21.9
+openpyxl
+telegram
+ffmpeg
+ffmpeg
+openpyxl
+pandas
+python-telegram-bot
+telegram
+yt-dlp
