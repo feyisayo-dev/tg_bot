@@ -25,6 +25,11 @@ import json
 import sqlite3
 import uuid  # To generate unique IDs
 from telegram.helpers import escape_markdown
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
 # Function to initialize the database
@@ -69,7 +74,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "1986997509:AAExTqU56U2odWAhTMjUkqvxSqwbyBFjHXo"
 DOWNLOAD_DIR = "downloads"
 TELEGRAM_MAX_SIZE = 2000 * 1024 * 1024
 
@@ -439,7 +443,7 @@ async def run_bot():
         .connect_timeout(300)
         .build()
     )
-await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
+    await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
 
     app.add_handler(
         CommandHandler(
