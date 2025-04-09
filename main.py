@@ -429,41 +429,42 @@ async def error_handler(update: object, context: CallbackContext) -> None:
         )
 
 
-def main() -> None:
+async def run_bot():
     init_db()
 
-    application = (
+    app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
         .read_timeout(300)
         .connect_timeout(300)
         .build()
     )
+await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
 
-    application.add_handler(
+    app.add_handler(
         CommandHandler(
             "start", start, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE
         )
     )
-    application.add_handler(
+    app.add_handler(
         CommandHandler(
             "about", about, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE
         )
     )
-    application.add_handler(
+    app.add_handler(
         CommandHandler(
             "help",
             help_command,
             filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE,
         )
     )
-    application.add_handler(
+    app.add_handler(
         CommandHandler(
             "donate", donate, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE
         )
     )
 
-    application.add_handler(
+    app.add_handler(
         CommandHandler(
             "download",
             download_command,
@@ -471,16 +472,16 @@ def main() -> None:
         )
     )
 
-    application.add_handler(CallbackQueryHandler(quality_selection))
+    app.add_handler(CallbackQueryHandler(quality_selection))
 
-    application.add_handler(CallbackQueryHandler(button))
-    application.add_handler(
+    app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, download_media)
     )
-    application.add_error_handler(error_handler)
+    app.add_error_handler(error_handler)
 
-    application.run_polling()
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_bot())
