@@ -1,4 +1,4 @@
-
+import random
 import re
 from uuid import uuid4
 import os
@@ -75,7 +75,8 @@ def download(url, format_id):
         if "entries" in info_dict:
             for idx, entry in enumerate(info_dict["entries"], start=1):
                 filename = ydl.prepare_filename(entry)
-                unique_filename = filename.replace(f"{sanitized_title}", f"{sanitized_title}_{idx}")
+                random_suffix = random.randint(100, 999)
+                unique_filename = filename.replace(f"{sanitized_title}", f"{sanitized_title}_{idx}_{random_suffix}")
                 os.rename(filename, unique_filename)
                 file_paths.append(unique_filename)
         else:
