@@ -488,4 +488,6 @@ async def run_bot():
 
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    import nest_asyncio
+    nest_asyncio.apply()
+    asyncio.get_event_loop().run_until_complete(run_bot())
