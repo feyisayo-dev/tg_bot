@@ -28,7 +28,6 @@ from telegram.helpers import escape_markdown
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
@@ -443,7 +442,7 @@ async def run_bot():
         .connect_timeout(300)
         .build()
     )
-    await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
+await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
 
     app.add_handler(
         CommandHandler(
