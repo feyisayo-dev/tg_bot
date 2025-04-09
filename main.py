@@ -121,9 +121,6 @@ async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     username = user.username or "unknown_user"
 
-    user = update.message.from_user
-    username = user.username or "unknown_user"
-
     if username not in user_ids:
         user_ids[username] = user_count
         user_count += 1
