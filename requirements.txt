@@ -6,5 +6,5 @@ ffmpeg
 openpyxl
 pandas
 python-telegram-bot
-telegram
 yt-dlp
+nest_asyncio
