@@ -238,7 +238,7 @@ async def download_media(
     url = override_url or update.message.text.strip()
     cleaning_tip = suggest_clean_url(url)
     if cleaning_tip:
-        print(cleaning_tip)
+        await context.bot.send_message(chat_id, cleaning_tip)
 
     download_start_time = time.time()
 
