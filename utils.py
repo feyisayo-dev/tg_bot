@@ -76,7 +76,12 @@ def download(url, format_id):
             for idx, entry in enumerate(info_dict["entries"], start=1):
                 filename = ydl.prepare_filename(entry)
                 random_suffix = random.randint(100, 999)
-                unique_filename = filename.replace(f"{sanitized_title}", f"{sanitized_title}_{idx}_{random_suffix}")
+                # Limit to first 10 words from the sanitized title
+                short_title = ' '.join(sanitized_title.split()[:10])
+
+                # Replace with the shortened title
+                unique_filename = filename.replace(sanitized_title, f"{short_title}_{idx}_{random_suffix}")
+
                 os.rename(filename, unique_filename)
                 file_paths.append(unique_filename)
         else:

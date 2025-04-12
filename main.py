@@ -391,11 +391,20 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
             try:
                 with open(file_path, "rb") as file:
                     title = sanitized_info.get("title", "Unknown Video")
+
+                    # Split and limit to 10 words
+                    words = title.split()
+                    if len(words) > 10:
+                        short_title = ' '.join(words[:10])
+                        caption = f"{short_title} ... downloaded by @mybot"
+                    else:
+                        caption = f"{title} downloaded by @mybot"
+
                     await context.bot.send_video(
                         chat_id=chat_id,
                         video=file,
                         supports_streaming=True,
-                        caption=f"🎥 {title} downloaded by @OffeyicialBot",
+                        caption=caption,
                     )
                 os.remove(file_path)  # Clean up the file after sending
             except Exception as e:
