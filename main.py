@@ -100,6 +100,12 @@ if not os.path.exists(log_file_path):
 else:
     df_log = pd.read_excel(log_file_path)
 
+def suggest_clean_url(url):
+    if any(site in url for site in ["faphouse.com", "xhamster.com", "pornhub.com", "xvideos.com"]):
+        base_url = url.split("?")[0].split("&")[0]
+        return f"👀 Heads up! For smoother downloads, use a clean URL like:\n\n{base_url}"
+    return ""
+
 
 def format_time(seconds):
     hrs, rem = divmod(seconds, 3600)
@@ -230,6 +236,9 @@ async def download_media(
 ) -> None:
     chat_id = update.effective_chat.id
     url = override_url or update.message.text.strip()
+    cleaning_tip = suggest_clean_url(url)
+    if cleaning_tip:
+        print(cleaning_tip)
 
     download_start_time = time.time()
 
@@ -420,7 +429,6 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
             chat_id, "⚠️ An error occurred while downloading."
         )
 
-
 async def help_command(update: Update, context: CallbackContext) -> None:
     help_message = (
         "*Help - List of Commands*\n\n"
@@ -428,7 +436,12 @@ async def help_command(update: Update, context: CallbackContext) -> None:
         "/about - Information about the bot\n"
         "/donate - Information on how to donate\n"
         "/help - Show this help message\n\n"
-        "To download media, send a video or audio link."
+        "To download media, send a video or audio link.\n\n"
+        "*Tip for sites with long URLs like Faphouse, XHamster, etc.*\n"
+        "For smoother downloads, it's recommended to only use the base URL and remove any parameters after `?` or `&` in the link.\n"
+        "Example:\n"
+        "https://faphouse.com/videos/iVXEuT\n\n"
+        "Avoid using links with tracking parameters like `utm_content=...&ref=...`."
     )
     await update.message.reply_text(help_message, parse_mode="Markdown")
 
