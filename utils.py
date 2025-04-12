@@ -57,9 +57,11 @@ def download(url, format_id):
     title = sanitized_info.get("title", "unknown_title")
     sanitized_title = re.sub(r'[\\/*?:"<>|]', '_', title)
     truncated_title = re.sub(r'[\\/*?:"<>|]', '_', title[:50])
+    # Strict truncation to avoid long filenames (30 chars max)
+    safe_title = truncated_title[:30].rstrip("_")
 
-    output_path = f"/tmp/{truncated_title}_%(id)s.%(ext)s"
-
+    # Final output path (includes yt_dlp formatting)
+    output_path = f"/tmp/{safe_title}_%(id)s.%(ext)s"
     ydl_opts = {
         "outtmpl": output_path,
         "cookies": "cookies.txt",
@@ -76,12 +78,7 @@ def download(url, format_id):
             for idx, entry in enumerate(info_dict["entries"], start=1):
                 filename = ydl.prepare_filename(entry)
                 random_suffix = random.randint(100, 999)
-                # Limit to first 10 words from the sanitized title
-                short_title = ' '.join(sanitized_title.split()[:10])
-
-                # Replace with the shortened title
-                unique_filename = filename.replace(sanitized_title, f"{short_title}_{idx}_{random_suffix}")
-
+                unique_filename = filename.replace(f"{sanitized_title}", f"{sanitized_title}_{idx}_{random_suffix}")
                 os.rename(filename, unique_filename)
                 file_paths.append(unique_filename)
         else:
