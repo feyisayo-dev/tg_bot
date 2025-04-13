@@ -84,7 +84,8 @@ user_count = 0
 
 os.makedirs("logs", exist_ok=True)
 log_file_path = "logs/upload_log.xlsx"
-
+queue = asyncio.Queue()
+queue_positions = {}  # Dictionary to track queue positions
 if not os.path.exists(log_file_path):
     df_log = pd.DataFrame(
         columns=[
@@ -101,7 +102,7 @@ else:
     df_log = pd.read_excel(log_file_path)
 
 def suggest_clean_url(url):
-    if any(site in url for site in ["faphouse.com", "xhamster.com", "pornhub.com", "xvideos.com"]):
+    if any(site in url for site in ["faphouse.com"]):
         base_url = url.split("?")[0].split("&")[0]
         return f"👀 Heads up! For smoother downloads, use a clean URL like:\n\n{base_url}"
     return ""
@@ -186,7 +187,7 @@ async def donate(update: Update, context: CallbackContext) -> None:
 
 
 async def send_video_info_message(
-    context, chat_id, file_size_mb, duration_hms, estimated_time_hms
+    context, chat_id, file_size_mb, duration_hms, estimated_time_hms, reply_to_msg_id=None
 ):
     message_text = (
         f"📂 Video Information:\n"
@@ -194,7 +195,11 @@ async def send_video_info_message(
         f"⏱ Duration: {duration_hms}\n"
         f"⌛ Estimated Time to Receive: {estimated_time_hms}"
     )
-    await context.bot.send_message(chat_id=chat_id, text=message_text)
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=message_text,
+        reply_to_message_id=reply_to_msg_id  # 👈 this is what makes it a reply
+    )
 
 
 async def send_delay_message(context, chat_id):
@@ -231,136 +236,143 @@ async def button(update: Update, context: CallbackContext) -> None:
         )
 
 
-async def download_media(
-    update: Update, context: CallbackContext, override_url=None
-) -> None:
-    chat_id = update.effective_chat.id
-    url = override_url or update.message.text.strip()
-    cleaning_tip = suggest_clean_url(url)
-    if cleaning_tip:
-        await context.bot.send_message(chat_id, cleaning_tip)
-
-    download_start_time = time.time()
-
-    if not url.startswith(("http://", "https://")):
-        await update.message.reply_text("⚠️ Please send a valid URL")
-        return
-
+async def handle_download_logic(chat_id, url, context, selected_format=None, reply_to_msg_id=None):
     try:
         sanitized_info = get_video_info(url)
         file_size = get_file_size(sanitized_info) or 0
         file_size_mb = file_size / (1024 * 1024)
         duration_hms = format_time(get_duration(sanitized_info))
 
+        # Send video info to the user
         await send_video_info_message(
-            context, chat_id, file_size_mb, duration_hms, "Calculating..."
+            context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_msg_id
         )
+
 
         quality_options = get_video_formats(url)
         thumbnail_url = sanitized_info.get("thumbnail")
 
+        # If no formats are available, download the default video
         if not quality_options:
-            await update.message.reply_text(
+            await context.bot.send_message(
+                chat_id,
                 "⚠️ No available formats found, downloading the default video...",
-                reply_to_message_id=update.message.message_id
             )
-            processing_task = asyncio.create_task(
-                send_processing_message(context, chat_id)
-            )
+            file_paths = download(url, None)
 
-            try:
-                file_paths = download(url, None)
-                processing_task.cancel()
+            # Send the downloaded video(s)
+            for file_path in file_paths:
                 try:
-                    await processing_task
-                except asyncio.CancelledError:
-                    pass
-
-                for file_path in file_paths:
-                    try:
-                        with open(file_path, 'rb') as file:
-                            await context.bot.send_video(
-                                chat_id=chat_id,
-                                video=file,
-                                supports_streaming=True,
-                                reply_to_message_id=update.message.message_id
-                            )
-                        os.remove(file_path)
-                    except Exception as e:
-                        logger.exception(f"Error sending file {file_path}: {e}")
-
-                await update.message.reply_text(
-                    "✅ Your download is complete! 🎥",
-                    reply_to_message_id=update.message.message_id
-                )
-
-            except Exception as e:
-                await update.message.reply_text(
-                    f"⚠️ Download failed: {e}",
-                    reply_to_message_id=update.message.message_id
-                )
-                logger.exception(f"Error downloading default video: {e}")
+                    with open(file_path, "rb") as file:
+                        await context.bot.send_video(
+                            chat_id=chat_id,
+                            video=file,
+                            supports_streaming=True,
+                            reply_to_message_id=reply_to_msg_id,  # ✅ Replies to the original message
+                        )
+                    os.remove(file_path)
+                except Exception as e:
+                    logger.exception(f"Error sending file {file_path}: {e}")
+                    await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
             return
 
-        # If formats exist, show selection
-        context.user_data["url"] = url
-        context.user_data["sanitized_info"] = sanitized_info
-
-        video_id = store_video_url(url)
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    f"{q['resolution']} - {((q.get('filesize') or 0) / (1024 * 1024)):.2f} MB",
-                    callback_data=json.dumps(
-                        {"video_id": video_id, "format_id": q["format_id"]}
+        # If formats exist and no specific format is selected, show the keyboard
+        if selected_format is None:
+            video_id = store_video_url(url)
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        f"{q['resolution']} - {((q.get('filesize') or 0) / (1024 * 1024)):.2f} MB",
+                        callback_data=json.dumps(
+                            {"video_id": video_id, "format_id": q["format_id"]}
+                        ),
                     )
+                ]
+                for q in quality_options
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            if thumbnail_url:
+                caption_text = (
+                    f"📥 *Select the quality you want:*\n\n"
+                    f"🎥 *Title:* {escape_markdown(sanitized_info.get('title', 'Unknown'), version=2)}\n"
+                    f"📂 *File Size:* {escape_markdown(f'{file_size_mb:.2f}', version=2)} MB\n"
+                    f"⏱ *Duration:* {escape_markdown(duration_hms, version=2)}"
                 )
-            ] for q in quality_options
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+                await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=thumbnail_url,
+                    caption=caption_text,
+                    reply_markup=reply_markup,
+                    parse_mode="MarkdownV2",
+                    reply_to_message_id=reply_to_msg_id,
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id,
+                    "📥 Select the quality you want:",
+                    reply_markup=reply_markup,
+                )
+            return
 
-        if thumbnail_url:
-            from telegram.helpers import escape_markdown
+        # If a specific format is selected, download it
+        file_paths = download(url, selected_format)
 
-            caption_text = (
-                f"📥 *Select the quality you want:*\n\n"
-                f"🎥 *Title:* {escape_markdown(sanitized_info.get('title', 'Unknown'), version=2)}\n"
-                f"📂 *File Size:* {escape_markdown(f'{file_size_mb:.2f}', version=2)} MB\n"
-                f"⏱ *Duration:* {escape_markdown(duration_hms, version=2)}"
-            )
+        # Send the downloaded video(s)
+        for file_path in file_paths:
+            try:
+                with open(file_path, "rb") as file:
+                    await context.bot.send_video(
+                        chat_id=chat_id,
+                        video=file,
+                        supports_streaming=True,
+                        reply_to_message_id=reply_to_msg_id,  # ✅ Replies to the original message
+                    )
+                os.remove(file_path)
+            except Exception as e:
+                logger.exception(f"Error sending file {file_path}: {e}")
+                await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
 
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=thumbnail_url,
-                caption=caption_text,
-                reply_markup=reply_markup,
-                parse_mode="MarkdownV2",
-                reply_to_message_id=update.message.message_id,
-            )
-        else:
-            await update.message.reply_text(
-                "📥 Select the quality you want:",
-                reply_markup=reply_markup,
-                reply_to_message_id=update.message.message_id,
-            )
+        await context.bot.send_message(chat_id, "✅ Download complete! 🎥")
 
     except Exception as e:
-        await update.message.reply_text(
-            f"⚠️ An error occurred while fetching video details: {e}"
+        logger.exception(f"Error during download: {e}")
+        await context.bot.send_message(
+            chat_id, "⚠️ An error occurred while processing your request."
         )
-        logger.exception(f"Error fetching video details: {e}")
+
+async def download_media(update: Update, context: CallbackContext, override_url=None, reply_to_msg_id=None) -> None:
+    chat_id = update.effective_chat.id
+    url = override_url or update.message.text.strip()
+
+    # Validate the URL
+    if not url.startswith(("http://", "https://")):
+        await update.message.reply_text("⚠️ Please send a valid URL")
+        return
+
+    # Suggest a clean URL if applicable
+    cleaning_tip = suggest_clean_url(url)
+    if cleaning_tip:
+        await context.bot.send_message(chat_id, cleaning_tip)
+
+    # Handle the download logic
+    await handle_download_logic(
+    chat_id, url, context, 
+    reply_to_msg_id=reply_to_msg_id or update.message.message_id
+    )
+
+
+
 
 async def download_command(update: Update, context: CallbackContext) -> None:
     if context.args:
         url = context.args[0].strip()
-        await download_media(update, context, override_url=url)
+        await download_media(update, context, override_url=url, reply_to_msg_id=update.message.message_id)
     else:
         await update.message.reply_text("⚠️ Usage: /download <URL>")
 
 
 async def quality_selection(update: Update, context: CallbackContext) -> None:
-    """Handles the user’s quality selection from the inline keyboard."""
     query = update.callback_query
 
     try:
@@ -375,59 +387,26 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
     await query.answer()  # Acknowledge the callback
 
     chat_id = query.message.chat_id
+    user_id = query.from_user.id
     url = get_video_url(video_id)  # Retrieve the original URL from the DB
 
     if not url:
         await context.bot.send_message(chat_id, "⚠️ Error: Video not found.")
         return
 
-    try:
-        # Fetch video info & initiate download
-        sanitized_info = get_video_info(url)
-        pin_msg = await context.bot.send_message(
-            chat_id, "📥 Downloading video... Please wait."
-        )
-        await context.bot.pin_chat_message(chat_id, pin_msg.message_id)
+    # Add the user request to the queue
+    reply_to_msg_id = update.callback_query.message.message_id
+    await queue.put((chat_id, user_id, url, selected_format, reply_to_msg_id))
 
-        file_paths = download(url, selected_format)
+    queue_positions[chat_id] = queue.qsize()  # Assign a unique position
 
-        if not file_paths:
-            await context.bot.send_message(chat_id, "⚠️ Download failed.")
-            return
+    # Notify the user of their queue position
+    queue_position = queue_positions[chat_id]
+    await context.bot.send_message(
+        chat_id,
+        f"📥 Your request has been added to the queue. Your position: {queue_position}. Please wait..."
+    )
 
-        # Send the downloaded video(s) to the user
-        for file_path in file_paths:
-            try:
-                with open(file_path, "rb") as file:
-                    title = sanitized_info.get("title", "Unknown Video")
-
-                    # Split and limit to 10 words
-                    words = title.split()
-                    if len(words) > 10:
-                        short_title = ' '.join(words[:10])
-                        caption = f"{short_title} ... downloaded by @mybot"
-                    else:
-                        caption = f"{title} downloaded by @mybot"
-
-                    await context.bot.send_video(
-                        chat_id=chat_id,
-                        video=file,
-                        supports_streaming=True,
-                        caption=caption,
-                    )
-                os.remove(file_path)  # Clean up the file after sending
-            except Exception as e:
-                logger.exception(f"Error sending file {file_path}: {e}")
-                await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
-
-        await context.bot.send_message(chat_id, "✅ Download complete! 🎥")
-        await context.bot.unpin_chat_message(chat_id, pin_msg.message_id)
-        await pin_msg.delete()
-    except Exception as e:
-        logger.exception(f"Unexpected error while downloading: {e}")
-        await context.bot.send_message(
-            chat_id, "⚠️ An error occurred while downloading."
-        )
 
 async def help_command(update: Update, context: CallbackContext) -> None:
     help_message = (
@@ -455,6 +434,18 @@ async def error_handler(update: object, context: CallbackContext) -> None:
         )
 
 
+async def process_queue(context: CallbackContext):
+    while True:
+        chat_id, user_id, url, selected_format, reply_to_msg_id = await queue.get()
+
+        try:
+            await handle_download_logic(chat_id, url, context, selected_format, reply_to_msg_id)
+        finally:
+            queue.task_done()
+            if chat_id in queue_positions:
+                del queue_positions[chat_id]
+
+
 async def run_bot():
     init_db()
 
@@ -466,7 +457,7 @@ async def run_bot():
         .build()
     )
     await app.bot.delete_webhook(drop_pending_updates=True)  # 🧨 Required for polling
-
+    asyncio.create_task(process_queue(app))
     app.add_handler(
         CommandHandler(
             "start", start, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE
