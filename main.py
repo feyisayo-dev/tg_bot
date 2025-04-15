@@ -457,10 +457,10 @@ async def help_command(update: Update, context: CallbackContext) -> None:
         "/donate - Information on how to donate\n"
         "/help - Show this help message\n\n"
         "To download media, send a video or audio link.\n\n"
-        "*Tip for sites with long URLs like Faphouse, XHamster, etc.*\n"
+        "*Tip for sites with long URLs like adult content sites or any other.*\n"
         "For smoother downloads, it's recommended to only use the base URL and remove any parameters after `?` or `&` in the link.\n"
         "Example:\n"
-        "https://faphouse.com/videos/iVXEuT\n\n"
+        "https://website.com/videos/abcc\n\n"
         "Avoid using links with tracking parameters like `utm_content=...&ref=...`."
     )
     await update.message.reply_text(help_message, parse_mode="Markdown")
