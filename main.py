@@ -439,7 +439,7 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
         if size_mb > 50:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="🔒 This format is larger than 50MB and only available to Premium users.\nUpgrade to download.",
+                text="🔒 This format is larger than 50MB and only available to Premium users.\nUpgrade to download. /upgrade",
                 reply_to_message_id=reply_to_msg_id
             )
             return
@@ -495,6 +495,16 @@ async def process_queue(context: CallbackContext):
             if chat_id in queue_positions:
                 del queue_positions[chat_id]
 
+async def upgrade(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text(
+        "🙌 *Thanks for your support!*\n\n"
+        "We’re working on a feature to let you download videos over 50MB.\n"
+        "It’s not ready *just yet*, but hang tight — it's coming soon.\n\n"
+        "For now, enjoy downloading smaller files and stick with us while we build more for you. 💪",
+        parse_mode="Markdown"
+    )
+
+
 
 async def run_bot():
     init_db()
@@ -525,6 +535,14 @@ async def run_bot():
             filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE,
         )
     )
+    app.add_handler(
+        CommandHandler(
+            "upgrade",
+            upgrade,
+            filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS,
+        )
+    )
+
     app.add_handler(
         CommandHandler(
             "donate", donate, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE
