@@ -428,7 +428,25 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
 
     # Add the user request to the queue
     reply_to_msg_id = update.callback_query.message.message_id
+    # Fetch available formats again to get file size
+    formats = get_video_formats(url)
+    chosen_format = next((f for f in formats if f["format_id"] == selected_format), None)
+
+    if chosen_format:
+        size_bytes = chosen_format.get("filesize") or 0
+        size_mb = size_bytes / (1024 * 1024)
+
+        if size_mb > 50:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🔒 This format is larger than 50MB and only available to Premium users.\nUpgrade to download.",
+                reply_to_message_id=reply_to_msg_id
+            )
+            return
+
+    # Proceed to queue if size is fine
     await queue.put((chat_id, user_id, url, selected_format, reply_to_msg_id))
+
 
     queue_positions[chat_id] = queue.qsize()  # Assign a unique position
 
