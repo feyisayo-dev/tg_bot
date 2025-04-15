@@ -347,6 +347,11 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
         send_pin_msg = await context.bot.send_message(chat_id, "📤 Sending video... Please wait.")
         await context.bot.pin_chat_message(chat_id, send_pin_msg.message_id)
 
+        title = sanitized_info.get("title", "Untitled")
+        words = title.split()
+        short_title = " ".join(words[:10]) + "..." if len(words) > 10 else title
+        caption = f"{short_title} downloaded by @offeyicialBot"
+
         for file_path in file_paths:
             try:
                 with open(file_path, "rb") as file:
@@ -354,13 +359,13 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                         chat_id=chat_id,
                         video=file,
                         supports_streaming=True,
+                        caption=caption,
                         reply_to_message_id=reply_to_msg_id
                     )
                 os.remove(file_path)
             except Exception as e:
                 logger.exception(f"Error sending file {file_path}: {e}")
                 await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
-
         try:
             await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
             await send_pin_msg.delete()
