@@ -243,65 +243,68 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
         file_size_mb = file_size / (1024 * 1024)
         duration_hms = format_time(get_duration(sanitized_info))
 
-        # Send video info to the user
+        # Send video info
         await send_video_info_message(
             context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_msg_id
         )
 
-
         quality_options = get_video_formats(url)
         thumbnail_url = sanitized_info.get("thumbnail")
 
-        # If no formats are available, download the default video
+        # ========== DEFAULT DOWNLOAD IF NO FORMATS ========== #
         if not quality_options:
             await context.bot.send_message(
-                chat_id,
-                "⚠️ No available formats found, downloading the default video...",
+                chat_id, "⚠️ No available formats found, downloading the default video..."
             )
-            # If a specific format is selected, download it
-            # 📌 Pin "Downloading..." message
+
+            # 📌 Pin Downloading...
             pin_msg = await context.bot.send_message(chat_id, "📥 Downloading video... Please wait.")
             await context.bot.pin_chat_message(chat_id, pin_msg.message_id)
 
             file_paths = download(url, None)
 
-            # Send the downloaded video(s)
-            await context.bot.unpin_chat_message(chat_id, pin_msg.message_id)
-            await pin_msg.delete()
+            # ✅ Unpin Downloading...
+            try:
+                await context.bot.unpin_chat_message(chat_id, pin_msg.message_id)
+                await pin_msg.delete()
+            except Exception as e:
+                logger.warning(f"Couldn't unpin/delete downloading message: {e}")
 
-            # 📌 Pin "Sending..." message
+            # 📌 Pin Sending...
             send_pin_msg = await context.bot.send_message(chat_id, "📤 Sending video... Please wait.")
             await context.bot.pin_chat_message(chat_id, send_pin_msg.message_id)
 
             for file_path in file_paths:
                 try:
-
                     with open(file_path, "rb") as file:
                         await context.bot.send_video(
                             chat_id=chat_id,
                             video=file,
                             supports_streaming=True,
-                            reply_to_message_id=reply_to_msg_id,  # ✅ Replies to the original message
+                            reply_to_message_id=reply_to_msg_id
                         )
                     os.remove(file_path)
                 except Exception as e:
                     logger.exception(f"Error sending file {file_path}: {e}")
                     await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
 
+            # ✅ Unpin Sending...
+            try:
                 await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
                 await send_pin_msg.delete()
+            except Exception as e:
+                logger.warning(f"Couldn't unpin/delete sending message: {e}")
+
             return
 
-        # If formats exist and no specific format is selected, show the keyboard
+        # ========== IF USER NEEDS TO SELECT FORMAT ========== #
         if selected_format is None:
             video_id = store_video_url(url)
             keyboard = [
                 [
                     InlineKeyboardButton(
                         f"{q['resolution']} - {((q.get('filesize') or 0) / (1024 * 1024)):.2f} MB",
-                        callback_data=json.dumps(
-                            {"video_id": video_id, "format_id": q["format_id"]}
-                        ),
+                        callback_data=json.dumps({"video_id": video_id, "format_id": q["format_id"]}),
                     )
                 ]
                 for q in quality_options
@@ -325,28 +328,25 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                 )
             else:
                 await context.bot.send_message(
-                    chat_id,
-                    "📥 Select the quality you want:",
-                    reply_markup=reply_markup,
+                    chat_id, "📥 Select the quality you want:", reply_markup=reply_markup
                 )
             return
 
-        # 📌 Pin downloading message
+        # ========== FORMAT WAS SELECTED, START DOWNLOAD ========== #
         pin_msg = await context.bot.send_message(chat_id, "📥 Downloading video... Please wait.")
         await context.bot.pin_chat_message(chat_id, pin_msg.message_id)
 
-        # Download
         file_paths = download(url, selected_format)
 
-        # 📌 Unpin downloading message
-        await context.bot.unpin_chat_message(chat_id, pin_msg.message_id)
-        await pin_msg.delete()
+        try:
+            await context.bot.unpin_chat_message(chat_id, pin_msg.message_id)
+            await pin_msg.delete()
+        except Exception as e:
+            logger.warning(f"Couldn't unpin/delete downloading message: {e}")
 
-        # 📌 Pin sending message
         send_pin_msg = await context.bot.send_message(chat_id, "📤 Sending video... Please wait.")
         await context.bot.pin_chat_message(chat_id, send_pin_msg.message_id)
 
-        # Send downloaded video(s)
         for file_path in file_paths:
             try:
                 with open(file_path, "rb") as file:
@@ -354,25 +354,24 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                         chat_id=chat_id,
                         video=file,
                         supports_streaming=True,
-                        reply_to_message_id=reply_to_msg_id,
+                        reply_to_message_id=reply_to_msg_id
                     )
                 os.remove(file_path)
             except Exception as e:
                 logger.exception(f"Error sending file {file_path}: {e}")
                 await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
 
-        # ✅ Unpin sending message
-        await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
-        await send_pin_msg.delete()
+        try:
+            await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
+            await send_pin_msg.delete()
+        except Exception as e:
+            logger.warning(f"Couldn't unpin/delete sending message: {e}")
 
-        # ✅ Done
         await context.bot.send_message(chat_id, "✅ Download complete! 🎥")
 
     except Exception as e:
         logger.exception(f"Error during download: {e}")
-        await context.bot.send_message(
-            chat_id, "⚠️ An error occurred while processing your request."
-        )
+        await context.bot.send_message(chat_id, "⚠️ An error occurred while processing your request.")
 
 async def download_media(update: Update, context: CallbackContext, override_url=None, reply_to_msg_id=None) -> None:
     chat_id = update.effective_chat.id
