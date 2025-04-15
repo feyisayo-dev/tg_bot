@@ -236,7 +236,7 @@ async def button(update: Update, context: CallbackContext) -> None:
         )
 
 
-async def handle_download_logic(chat_id, url, context, selected_format=None, reply_to_msg_id=None):
+async def handle_download_logic(chat_id, url, context, selected_format=None, reply_to_message_id=None):
     try:
         sanitized_info = get_video_info(url)
         file_size = get_file_size(sanitized_info) or 0
@@ -245,20 +245,31 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
 
         # Send video info to the user
         await send_video_info_message(
-            context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_msg_id
+            context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_message_id
         )
-
 
         quality_options = get_video_formats(url)
         thumbnail_url = sanitized_info.get("thumbnail")
 
+        # Pin "Downloading, please wait..." message
+        downloading_message = await context.bot.send_message(
+            chat_id, "📥 Downloading, please wait..."
+        )
+        await context.bot.pin_chat_message(chat_id, downloading_message.message_id)
+
         # If no formats are available, download the default video
         if not quality_options:
-            await context.bot.send_message(
-                chat_id,
-                "⚠️ No available formats found, downloading the default video...",
-            )
             file_paths = download(url, None)
+
+            # Unpin the "Downloading" message
+            await context.bot.unpin_chat_message(chat_id, downloading_message.message_id)
+            await downloading_message.delete()
+
+            # Pin "Sending, please wait..." message
+            sending_message = await context.bot.send_message(
+                chat_id, "📤 Sending, please wait..."
+            )
+            await context.bot.pin_chat_message(chat_id, sending_message.message_id)
 
             # Send the downloaded video(s)
             for file_path in file_paths:
@@ -268,12 +279,18 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                             chat_id=chat_id,
                             video=file,
                             supports_streaming=True,
-                            reply_to_message_id=reply_to_msg_id,  # ✅ Replies to the original message
+                            reply_to_message_id=reply_to_message_id,  # ✅ Replies to the original message
                         )
                     os.remove(file_path)
                 except Exception as e:
                     logger.exception(f"Error sending file {file_path}: {e}")
-                    await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
+                    await context.bot.send_message(
+                        chat_id, "⚠️ Error sending the video.", reply_to_message_id=reply_to_message_id
+                    )
+
+            # Unpin the "Sending" message
+            await context.bot.unpin_chat_message(chat_id, sending_message.message_id)
+            await sending_message.delete()
             return
 
         # If formats exist and no specific format is selected, show the keyboard
@@ -305,18 +322,33 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                     caption=caption_text,
                     reply_markup=reply_markup,
                     parse_mode="MarkdownV2",
-                    reply_to_message_id=reply_to_msg_id,
+                    reply_to_message_id=reply_to_message_id,
                 )
             else:
                 await context.bot.send_message(
                     chat_id,
                     "📥 Select the quality you want:",
                     reply_markup=reply_markup,
+                    reply_to_message_id=reply_to_message_id,
                 )
+
+            # Unpin the "Downloading" message
+            await context.bot.unpin_chat_message(chat_id, downloading_message.message_id)
+            await downloading_message.delete()
             return
 
         # If a specific format is selected, download it
         file_paths = download(url, selected_format)
+
+        # Unpin the "Downloading" message
+        await context.bot.unpin_chat_message(chat_id, downloading_message.message_id)
+        await downloading_message.delete()
+
+        # Pin "Sending, please wait..." message
+        sending_message = await context.bot.send_message(
+            chat_id, "📤 Sending, please wait..."
+        )
+        await context.bot.pin_chat_message(chat_id, sending_message.message_id)
 
         # Send the downloaded video(s)
         for file_path in file_paths:
@@ -326,20 +358,29 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                         chat_id=chat_id,
                         video=file,
                         supports_streaming=True,
-                        reply_to_message_id=reply_to_msg_id,  # ✅ Replies to the original message
+                        reply_to_message_id=reply_to_message_id,  # ✅ Replies to the original message
                     )
                 os.remove(file_path)
             except Exception as e:
                 logger.exception(f"Error sending file {file_path}: {e}")
-                await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
+                await context.bot.send_message(
+                    chat_id, "⚠️ Error sending the video.", reply_to_message_id=reply_to_message_id
+                )
 
-        await context.bot.send_message(chat_id, "✅ Download complete! 🎥")
+        # Unpin the "Sending" message
+        await context.bot.unpin_chat_message(chat_id, sending_message.message_id)
+        await sending_message.delete()
+
+        await context.bot.send_message(
+            chat_id, "✅ Download complete! 🎥", reply_to_message_id=reply_to_message_id
+        )
 
     except Exception as e:
         logger.exception(f"Error during download: {e}")
         await context.bot.send_message(
-            chat_id, "⚠️ An error occurred while processing your request."
+            chat_id, "⚠️ An error occurred while processing your request.", reply_to_message_id=reply_to_message_id
         )
+
 
 async def download_media(update: Update, context: CallbackContext, override_url=None, reply_to_msg_id=None) -> None:
     chat_id = update.effective_chat.id
