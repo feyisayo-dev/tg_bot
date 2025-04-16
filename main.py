@@ -465,17 +465,24 @@ async def quality_selection(update: Update, context: CallbackContext) -> None:
 
 async def help_command(update: Update, context: CallbackContext) -> None:
     help_message = (
-        "*Help - List of Commands*\n\n"
-        "/start - Show options to download or open browsers\n"
-        "/about - Information about the bot\n"
-        "/donate - Information on how to donate\n"
+        "*📖 How to Use MediaMate Bot*\n\n"
+        "This bot lets you download videos and audio from various websites.\n\n"
+        "*✅ Commands Available:*\n"
+        "/start - Main menu with download options and browsers\n"
+        "/about - Information about the bot and its features\n"
+        "/donate - Support development and maintenance\n"
+        "/download <url> - Instantly download media using a direct URL\n"
         "/help - Show this help message\n\n"
-        "To download media, send a video or audio link.\n\n"
-        "*Tip for sites with long URLs like adult content sites or any other.*\n"
-        "For smoother downloads, it's recommended to only use the base URL and remove any parameters after `?` or `&` in the link.\n"
+        "*🎯 To Download Media:*\n"
+        "Just send a direct video or audio link in the chat. The bot will analyze it and let you choose the quality to download.\n\n"
+        "*💡 You can also use:*\n"
+        "`/download <video-url> @offeyicialBot`\n"
+        "✅ Works in group chats or forwarded messages!\n\n"
+        "*📌 Tip for Long URLs:*\n"
+        "Remove tracking parameters (after `?` or `&`) for better results.\n"
         "Example:\n"
-        "https://website.com/videos/abcc\n\n"
-        "Avoid using links with tracking parameters like `utm_content=...&ref=...`."
+        "`https://website.com/videos/abc123?utm_source=xyz` → `https://website.com/videos/abc123`\n\n"
+        "Enjoy fast, high-quality downloads with *MediaMate*! 😎"
     )
     await update.message.reply_text(help_message, parse_mode="Markdown")
 
