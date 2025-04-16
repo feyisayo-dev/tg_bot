@@ -2,6 +2,7 @@ python-dotenv
 pandas==2.2.3
 yt-dlp>=2025.01.12
 python-telegram-bot==21.9
+# ffmpeg
 openpyxl
 pandas
 python-telegram-bot
