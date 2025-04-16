@@ -68,8 +68,7 @@ def download(url, format_id):
         "outtmpl": output_path,
         "cookies": "cookies.txt",
         "cookies-from-browser": "chrome",
-        "merge_output_format": 'mp4',
-        'format': f'{format_id}+bestaudio/best' if format_id else 'bestvideo+bestaudio/best',
+        "format": format_id or "best",
         "verbose": True
     }
 
