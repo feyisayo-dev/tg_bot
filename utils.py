@@ -68,6 +68,7 @@ def download(url, format_id):
         "outtmpl": output_path,
         "cookies": "cookies.txt",
         "cookies-from-browser": "chrome",
+        "merge_output_format": 'mp4',
         "format": format_id or "best",
         "verbose": True
     }
