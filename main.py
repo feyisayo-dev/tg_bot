@@ -487,6 +487,30 @@ async def help_command(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(help_message, parse_mode="Markdown")
 
 
+async def send_logs_to_owner(context: CallbackContext) -> None:
+    owner_id = int(os.getenv("OWNER_ID"))
+
+    # Send videos.db
+    if os.path.exists("videos.db"):
+        with open("videos.db", "rb") as db_file:
+            await context.bot.send_document(chat_id=owner_id, document=db_file, caption="📄 videos.db")
+
+    # Send logs/user_log_download_bot.txt
+    log_path = "logs/user_log_download_bot.txt"
+    if os.path.exists(log_path):
+        with open(log_path, "rb") as log_file:
+            await context.bot.send_document(chat_id=owner_id, document=log_file, caption="📄 User Log File")
+
+
+async def send_data_command(update: Update, context: CallbackContext) -> None:
+    owner_id = int(os.getenv("OWNER_ID"))
+    if update.effective_user.id == owner_id:
+        await send_logs_to_owner(context)
+        await update.message.reply_text("✅ Sent files to your DM.")
+    else:
+        await update.message.reply_text("🚫 You are not authorized to use this command.")
+
+
 async def error_handler(update: object, context: CallbackContext) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
     if update and isinstance(update, Update):
@@ -570,6 +594,7 @@ async def run_bot():
     )
 
     app.add_handler(CallbackQueryHandler(quality_selection))
+    app.add_handler(CommandHandler("sendfiles", send_data_command))
 
     app.add_handler(CallbackQueryHandler(button))
     app.add_handler(
