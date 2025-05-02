@@ -243,10 +243,10 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
         file_size_mb = file_size / (1024 * 1024)
         duration_hms = format_time(get_duration(sanitized_info))
 
-        # Send video info
-        await send_video_info_message(
-            context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_msg_id
-        )
+        # # Send video info
+        # await send_video_info_message(
+        #     context, chat_id, file_size_mb, duration_hms, "Calculating...", reply_to_msg_id
+        # )
 
         quality_options = get_video_formats(url)
         thumbnail_url = sanitized_info.get("thumbnail")
