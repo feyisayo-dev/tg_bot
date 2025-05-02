@@ -50,6 +50,16 @@ def get_video_formats(url):
             format_id = fmt.get("format_id")
             filesize = fmt.get("filesize", 0)
 
+            duration = info.get("duration", 0)
+            tbr = fmt.get("tbr")  # in kbps
+
+            # Estimate size if filesize is missing
+            if not fmt.get("filesize") and tbr and duration:
+                estimated_filesize = int((tbr * 1024 / 8) * duration)  # bytes
+            else:
+                estimated_filesize = fmt.get("filesize", 0)
+
+
             # 🔍 Determine readable label
             if format_note:
                 label = format_note
@@ -61,7 +71,7 @@ def get_video_formats(url):
             quality_options.append({
                 "format_id": str(format_id),
                 "label": label,
-                "filesize": filesize
+                "filesize": estimated_filesize
             })
 
     return quality_options
