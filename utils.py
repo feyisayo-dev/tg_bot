@@ -35,6 +35,11 @@ def get_video_formats(url):
         info = ydl.extract_info(url, download=False)
         formats = info.get("formats", [])
 
+    print("🔍 Full Video Formats Info:")
+    for fmt in formats:
+        print(fmt)
+
+
     quality_options = []
     for fmt in formats:
         has_video = fmt.get("vcodec") != "none"
