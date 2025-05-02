@@ -35,20 +35,28 @@ def get_video_formats(url):
         info = ydl.extract_info(url, download=False)
         formats = info.get("formats", [])
 
-    print("🔍 Full Video Formats Info:")
-    for fmt in formats:
-        print(fmt)
-
     quality_options = []
     for fmt in formats:
         has_video = fmt.get("vcodec") != "none"
         has_audio = fmt.get("acodec") != "none"
-        if has_video and has_audio:  # ✅ Only keep formats with both
-            resolution = fmt.get("resolution") or f"{fmt.get('height', 'Unknown')}p"
+        if has_video and has_audio:
+            height = fmt.get("height")
+            format_note = fmt.get("format_note")
+            format_id = fmt.get("format_id")
+            filesize = fmt.get("filesize", 0)
+
+            # 🔍 Determine readable label
+            if format_note:
+                label = format_note
+            elif height:
+                label = f"{height}p"
+            else:
+                label = format_id  # fallback
+
             quality_options.append({
-                "format_id": str(fmt.get("format_id")),
-                "resolution": resolution,
-                "filesize": fmt.get("filesize", 0)
+                "format_id": str(format_id),
+                "label": label,
+                "filesize": filesize
             })
 
     return quality_options
