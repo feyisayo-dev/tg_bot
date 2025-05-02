@@ -315,7 +315,6 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                 caption_text = (
                     f"📥 *Select the quality you want:*\n\n"
                     f"🎥 *Title:* {escape_markdown(sanitized_info.get('title', 'Unknown'), version=2)}\n"
-                    # f"📂 *File Size:* {escape_markdown(f'{file_size_mb:.2f}', version=2)} MB\n"
                     f"⏱ *Duration:* {escape_markdown(duration_hms, version=2)}"
                 )
                 await context.bot.send_photo(
