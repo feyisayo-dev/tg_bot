@@ -303,7 +303,7 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
             keyboard = [
                 [
                     InlineKeyboardButton(
-                        f"{q['resolution']} - {((q.get('filesize') or 0) / (1024 * 1024)):.2f} MB",
+                        f"{q['label']} - {((q.get('filesize') or 0) / (1024 * 1024)):.2f} MB",
                         callback_data=json.dumps({"video_id": video_id, "format_id": q["format_id"]}),
                     )
                 ]
