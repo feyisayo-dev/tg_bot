@@ -41,7 +41,9 @@ def get_video_formats(url):
 
     quality_options = []
     for fmt in formats:
-        if fmt.get("vcodec") != "none":
+        has_video = fmt.get("vcodec") != "none"
+        has_audio = fmt.get("acodec") != "none"
+        if has_video and has_audio:  # ✅ Only keep formats with both
             resolution = fmt.get("resolution") or f"{fmt.get('height', 'Unknown')}p"
             quality_options.append({
                 "format_id": str(fmt.get("format_id")),
