@@ -52,7 +52,8 @@ def get_video_formats(url):
 
             duration = info.get("duration", 0)
             tbr = fmt.get("tbr")  # in kbps
-
+            print(f"tbr: {tbr}")
+            print(f"duration: {duration}")
             # Estimate size if filesize is missing
             if not fmt.get("filesize") and tbr and duration:
                 estimated_filesize = int((tbr * 1024 / 8) * duration)  # bytes
