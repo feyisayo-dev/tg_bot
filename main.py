@@ -285,18 +285,8 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                         )
                     os.remove(file_path)
                 except Exception as e:
-                    error_text = str(e)
-                    if "HTTP Error 423" in error_text:
-                        message = "🚫 This video is locked or unavailable in your region. Try again later or with a different network."
-                    elif "HTTP Error 404" in error_text:
-                        message = "❌ The video link is invalid or has been removed."
-                    elif "HTTP Error 403" in error_text:
-                        message = "🚫 Access denied. The site may require login or region access."
-                    else:
-                        message = f"⚠️ Download failed: `{error_text}`"
-
-                    logger.exception(f"Error during download: {message}")
-                    await context.bot.send_message(chat_id, message, parse_mode="Markdown")
+                    logger.exception(f"Error sending file {file_path}: {e}")
+                    await context.bot.send_message(chat_id, f"⚠️ Error sending the video.\n\n`{str(e)}`", parse_mode="Markdown")
 
             # ✅ Unpin Sending...
             try:
@@ -373,19 +363,8 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                     )
                 os.remove(file_path)
             except Exception as e:
-                error_text = str(e)
-                if "HTTP Error 423" in error_text:
-                    message = "🚫 This video is locked or unavailable in your region. Try again later or with a different network."
-                elif "HTTP Error 404" in error_text:
-                    message = "❌ The video link is invalid or has been removed."
-                elif "HTTP Error 403" in error_text:
-                    message = "🚫 Access denied. The site may require login or region access."
-                else:
-                    message = f"⚠️ Download failed: `{error_text}`"
-
-                logger.exception(f"Error during download: {message}")
-                await context.bot.send_message(chat_id, message, parse_mode="Markdown")
-
+                logger.exception(f"Error sending file {file_path}: {e}")
+                await context.bot.send_message(chat_id, f"⚠️ Error sending the video.\n\n`{str(e)}`", parse_mode="Markdown")
         try:
             await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
             await send_pin_msg.delete()
@@ -395,8 +374,18 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
         await context.bot.send_message(chat_id, "✅ Download complete! 🎥")
 
     except Exception as e:
-        logger.exception(f"Error during download: {e}")
-        await context.bot.send_message(chat_id, "⚠️ An error occurred while processing your request.")
+        error_text = str(e)
+        if "HTTP Error 423" in error_text:
+            message = "🚫 This video is locked or unavailable in your region."
+        elif "HTTP Error 404" in error_text:
+            message = "❌ The video link is invalid or has been removed."
+        elif "HTTP Error 403" in error_text:
+            message = "🚫 Access denied. The site may require login or region access."
+        else:
+            message = f"⚠️ Download failed: `{error_text}`"
+
+        logger.exception(f"Error during download: {message}")
+        await context.bot.send_message(chat_id, message, parse_mode="Markdown")
 
 async def download_media(update: Update, context: CallbackContext, override_url=None, reply_to_msg_id=None) -> None:
     chat_id = update.effective_chat.id
