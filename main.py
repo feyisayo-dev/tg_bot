@@ -285,8 +285,18 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                         )
                     os.remove(file_path)
                 except Exception as e:
-                    logger.exception(f"Error sending file {file_path}: {e}")
-                    await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
+                    error_text = str(e)
+                    if "HTTP Error 423" in error_text:
+                        message = "🚫 This video is locked or unavailable in your region. Try again later or with a different network."
+                    elif "HTTP Error 404" in error_text:
+                        message = "❌ The video link is invalid or has been removed."
+                    elif "HTTP Error 403" in error_text:
+                        message = "🚫 Access denied. The site may require login or region access."
+                    else:
+                        message = f"⚠️ Download failed: `{error_text}`"
+
+                    logger.exception(f"Error during download: {message}")
+                    await context.bot.send_message(chat_id, message, parse_mode="Markdown")
 
             # ✅ Unpin Sending...
             try:
@@ -363,8 +373,19 @@ async def handle_download_logic(chat_id, url, context, selected_format=None, rep
                     )
                 os.remove(file_path)
             except Exception as e:
-                logger.exception(f"Error sending file {file_path}: {e}")
-                await context.bot.send_message(chat_id, "⚠️ Error sending the video.")
+                error_text = str(e)
+                if "HTTP Error 423" in error_text:
+                    message = "🚫 This video is locked or unavailable in your region. Try again later or with a different network."
+                elif "HTTP Error 404" in error_text:
+                    message = "❌ The video link is invalid or has been removed."
+                elif "HTTP Error 403" in error_text:
+                    message = "🚫 Access denied. The site may require login or region access."
+                else:
+                    message = f"⚠️ Download failed: `{error_text}`"
+
+                logger.exception(f"Error during download: {message}")
+                await context.bot.send_message(chat_id, message, parse_mode="Markdown")
+
         try:
             await context.bot.unpin_chat_message(chat_id, send_pin_msg.message_id)
             await send_pin_msg.delete()
